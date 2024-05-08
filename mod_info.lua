@@ -1,0 +1,17 @@
+name = "Mini27AI"
+uid = "fmini027-v001-55b4-92b6-64398e7ge43f"
+version = 1
+copyright = "MIT License"
+description = "Simplistic AI to provide a starting point for AI developers"
+author = "maudlin27"
+url = ""
+icon = "/mods/Mini27AI/Mini27AI.jpg"
+selectable = true
+enabled = true
+exclusive = false
+ui_only = false
+requires = { }
+requiresNames = { }
+conflicts = { }
+before = { }
+after = { }
