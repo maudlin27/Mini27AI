@@ -5,7 +5,11 @@
 ---
 local NavUtils = import("/lua/sim/navutils.lua")
 
+--Global variables
 bMapSetupRun = false
+
+--Variables against a brain
+reftEnemyBase = 'Mini27EnBase' --{x,y,z} of the enemy base
 
 function SetupMap(aiBrain)
     if not(bMapSetupRun) then
@@ -16,3 +20,27 @@ function SetupMap(aiBrain)
     end
     --LOG('M27Temp setup') --Remove comments if wanting to confirm code is running
 end
+
+----------General information and functions to support below------
+function DetermineEnemyBase(aiBrain)
+    local iNearestEnemyBaseDist = 10000
+    local tNearestEnemyBase, iCurDist, iEnemyBaseX, iEnemyBaseZ
+    local iOurBaseX, iOurBaseZ = aiBrain:GetArmyStartPos()
+    local iOurIndex = aiBrain:GetArmyIndex()
+    for iBrain, oBrain in ArmyBrains do
+        if IsEnemy(iOurIndex, oBrain:GetArmyIndex()) then
+            --Is it a civilian?
+            if not(ArmyIsCivilian(oBrain:GetArmyIndex())) then
+                iEnemyBaseX, iEnemyBaseZ = oBrain:GetArmyStartPos()
+                iCurDist = VDist2(iOurBaseX, iOurBaseZ, iEnemyBaseX, iEnemyBaseZ)
+                LOG('Considering enemy brain '..aiBrain.Nickname..'; start positionX='..iEnemyBaseX..';Z='..iEnemyBaseZ..'; iCurDist='..iCurDist..'; Personality='..(ScenarioInfo.ArmySetup[aiBrain.Name].AIPersonality or 'nil'))
+                if iCurDist < iNearestEnemyBaseDist then
+                    iNearestEnemyBaseDist = iCurDist
+                    tNearestEnemyBase = {iEnemyBaseX, GetSurfaceHeight(iEnemyBaseX, iEnemyBaseZ), iEnemyBaseZ}
+                end
+            end
+        end
+    end
+    aiBrain[reftEnemyBase] = {tNearestEnemyBase[1], tNearestEnemyBase[2], tNearestEnemyBase[3]}
+end
+

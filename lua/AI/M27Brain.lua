@@ -18,7 +18,7 @@ NewAIBrain = Class(StandardBrain) {
 
     OnCreateAI = function(self, planName)
         StandardBrain.OnCreateAI(self)
-        self.M27AI = true
+        self.Mini27AI = true
         ForkThread(M27Map.SetupMap, self)
     end,
 }
