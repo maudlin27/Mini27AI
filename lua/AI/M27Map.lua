@@ -7,6 +7,8 @@ local NavUtils = import("/lua/sim/navutils.lua")
 
 --Global variables
 bMapSetupRun = false
+tMassPoints = {}
+tHydroPoints = {}
 
 --Variables against a brain
 reftEnemyBase = 'Mini27EnBase' --{x,y,z} of the enemy base
@@ -21,7 +23,28 @@ function SetupMap(aiBrain)
     --LOG('M27Temp setup') --Remove comments if wanting to confirm code is running
 end
 
-----------General information and functions to support below------
+function RecordResourcePoint(sResourceType,x,y,z,size)
+    --called by hook into simInit, more reliable method of figuring out if have adaptive map than using markers, as not all mass markers may have mexes generated on an adaptive map
+    --Whenever a resource location is created in the map, this is called, and will record the resource location into a table of mex points (tMassPoints) and hydro points (tHydroPoints) for referencing in later code
+    local bAlreadyRecorded = false
+    local tResourceTableRef
+    if sResourceType == 'Mass' then
+        tResourceTableRef = tMassPoints
+    elseif sResourceType == 'Hydrocarbon' then
+        tResourceTableRef = tHydroPoints
+    end
+    if tResourceTableRef[1] then
+        for iEntry, tResource in tResourceTableRef do
+            if tResource[1] == x and tResource[3] == z then bAlreadyRecorded = true break end
+        end
+    end
+    if not(bAlreadyRecorded) then
+        table.insert(tResourceTableRef, {x,y,z})
+    end
+end
+
+----------General information and functions------
+
 function DetermineEnemyBase(aiBrain)
     local iNearestEnemyBaseDist = 10000
     local tNearestEnemyBase, iCurDist, iEnemyBaseX, iEnemyBaseZ

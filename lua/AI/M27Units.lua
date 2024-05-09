@@ -4,6 +4,7 @@
 --- DateTime: 08/05/2024 22:56
 ---
 local M27Map = import('/mods/Mini27AI/lua/AI/M27Map.lua')
+local NavUtils = import("/lua/sim/navutils.lua")
 
 --Global variables: Order references
 subrefiOrderType = 1
@@ -59,6 +60,7 @@ function OnUnitDeath(oUnit)
     if oUnit[reftoAttackingUnits][1] then
         for iAttacker, oAttacker in oUnit[reftoAttackingUnits] do
             if oAttacker == oUnit then
+                --LOG('OnUnitDeath: Will assign logic to the attacker who was trying to attack this unit')
                 ForkThread(AssignLogicToUnit, oAttacker)
                 table.remove(oUnit[reftoAttackingUnits], iAttacker)                
                 break
@@ -111,7 +113,36 @@ function AssignLogicToUnit(oUnit, iOptionalDelayInSeconds)
         elseif oUnit:GetHealth() / oUnit:GetMaxHealth() < 0.7 then
             RunToBase(oUnit)
         else
-            AttackNearestVisibleEnemy(oUnit)
+            --Build factory if high mass
+            local oNearestEnemy, iNearestEnemyDist = GetNearestEnemyUnitAndDistance(oUnit)
+            if iNearestEnemyDist <= 35 then
+                IssueTrackedAttack(oUnit, oNearestEnemy, false)
+            elseif aiBrain:GetEconomyStoredRatio('MASS') >= 0.2 then
+                local sBlueprintToBuild
+                if aiBrain:GetEconomyStoredRatio('ENERGY') <= 0.9 then
+                    sBlueprintToBuild = GetBlueprintThatCanBuildOfCategory(aiBrain, categories.STRUCTURE * categories.ENERGYPRODUCTION - categories.HYDROCARBON, oUnit)
+                else
+                    sBlueprintToBuild = GetBlueprintThatCanBuildOfCategory(aiBrain, categories.STRUCTURE * categories.FACTORY * categories.LAND, oUnit)
+                end
+                BuildNormalBuilding(oUnit, sBlueprintToBuild, oUnit:GetPosition())
+            else
+                local tNearestMex, iNearestMexDist = GetNearestAvailableMexLocationAndDistance(oUnit)
+                local bBuildingMex = false
+                if iNearestMexDist < iNearestEnemyDist then
+                    local sBlueprintToBuild = GetBlueprintThatCanBuildOfCategory(aiBrain, categories.STRUCTURE * categories.MASSEXTRACTION, oUnit)
+                    if sBlueprintToBuild then
+                        bBuildingMex = true
+                        IssueTrackedBuild(oUnit, tNearestMex, sBlueprintToBuild, false)
+                    end
+                end
+                if not(bBuildingMex) then
+                    if oNearestEnemy then
+                        IssueTrackedAttack(oUnit, oNearestEnemy, false)
+                    else
+                        AttackEnemyBase(oUnit)
+                    end
+                end
+            end
         end
     elseif EntityCategoryContains(categories.LAND * categories.MOBILE * categories.DIRECTFIRE + categories.LAND * categories.MOBILE * categories.INDIRECTFIRE, oUnit.UnitId) then
         AttackNearestVisibleEnemy(oUnit)
@@ -142,18 +173,25 @@ function ProcessACUBuildOrder(oUnit)
     local aiBrain = oUnit:GetAIBrain()
     local iCurPGens = aiBrain:GetCurrentUnits(categories.STRUCTURE * categories.ENERGYPRODUCTION)
     local iCurFactories = aiBrain:GetCurrentUnits(categories.FACTORY)
+    local iCurMexes = aiBrain:GetCurrentUnits(categories.STRUCTURE * categories.MASSEXTRACTION)
 
     local sBlueprintToBuild
-
-    if iCurFactories > 0  and iCurPGens < 5 + iCurFactories then
-        sBlueprintToBuild = GetBlueprintThatCanBuildOfCategory(aiBrain, categories.STRUCTURE * categories.ENERGYPRODUCTION - categories.HYDROCARBON, oUnit)
+    --LOG('iCurFactories='..iCurFactories..'; iCurMexes='..iCurMexes..'; iCurPGens='..iCurPGens)
+    if iCurFactories > 0 and iCurMexes < iCurPGens then
+        --Build a mex
+        BuildNearestAvailableMex(oUnit)
     else
-        sBlueprintToBuild = GetBlueprintThatCanBuildOfCategory(aiBrain, categories.FACTORY * categories.LAND, oUnit)
-    end
-    if sBlueprintToBuild then
-        BuildNormalBuilding(oUnit, sBlueprintToBuild, oUnit:GetPosition())
-    else
-        ForkThread(AssignLogicToUnit, oUnit, 5)
+        if iCurFactories > 0  and iCurPGens < 5 + iCurFactories then
+            sBlueprintToBuild = GetBlueprintThatCanBuildOfCategory(aiBrain, categories.STRUCTURE * categories.ENERGYPRODUCTION - categories.HYDROCARBON, oUnit)
+        else
+            sBlueprintToBuild = GetBlueprintThatCanBuildOfCategory(aiBrain, categories.FACTORY * categories.LAND, oUnit)
+        end
+        if sBlueprintToBuild then
+            BuildNormalBuilding(oUnit, sBlueprintToBuild, oUnit:GetPosition())
+        else
+            --LOG('Processing ACU build order - no action so will retry assigning logic in 5s')
+            ForkThread(AssignLogicToUnit, oUnit, 5)
+        end
     end
 end
 
@@ -181,13 +219,24 @@ function GetBuildLocation(aiBrain, sBlueprintToBuild, tSearchLocation)
 end
 
 function BuildNormalBuilding(oUnit, sBlueprintToBuild, tSearchLocation)
-    local oBP = __blueprints[sBlueprintToBuild]
     local aiBrain = oUnit:GetAIBrain()
     local tBuildLocation = GetBuildLocation(aiBrain, sBlueprintToBuild, tSearchLocation)
     if tBuildLocation then
         IssueTrackedBuild(oUnit, tBuildLocation, sBlueprintToBuild, false)
     else
+        --LOG('BuildNormalBuilding - no build location so will retry assigning logic in 5s')
         ForkThread(AssignLogicToUnit, oUnit, 5)
+    end
+end
+
+function BuildNearestAvailableMex(oUnit)
+    local aiBrain = oUnit:GetAIBrain()
+    local sBlueprintToBuild = GetBlueprintThatCanBuildOfCategory(aiBrain, categories.STRUCTURE * categories.MASSEXTRACTION, oUnit)
+    if sBlueprintToBuild then
+        local tNearestMex, iNearestMexDist = GetNearestAvailableMexLocationAndDistance(oUnit)
+        if tNearestMex then
+            IssueTrackedBuild(oUnit, tNearestMex, sBlueprintToBuild, false)
+        end
     end
 end
 
@@ -198,6 +247,7 @@ function BuildFactoryUnit(oFactory)
     if sBlueprintToBuild then
         IssueTrackedFactoryBuild(oFactory, sBlueprintToBuild)
     else
+        --LOG('BuildFactoryUnit - no unit to build so will retry assigning logic in 10s')
         ForkThread(AssignLogicToUnit, oFactory, 10)
     end
 end
@@ -206,22 +256,7 @@ end
 function AttackNearestVisibleEnemy(oUnit)
     --Locates the nearest enemy to oUnit and does an attack move towards it
       --LOG('AttackNearestVisibleEnemy triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
-    local aiBrain = oUnit:GetAIBrain()
-    local tEnemyUnits = aiBrain:GetUnitsAroundPoint(categories.LAND + categories.STRUCTURE, oUnit:GetPosition(), 500, 'Enemy')
-    local oClosestEnemy
-    if tEnemyUnits[1] then
-        local iClosestEnemyDist = 10000
-        local tUnitPosition = oUnit:GetPosition()
-        local iCurDist, tCurEnemyPosition
-        for iEnemy, oEnemy in tEnemyUnits do
-            tCurEnemyPosition = oEnemy:GetPosition()
-            iCurDist = VDist2(tUnitPosition[1], tUnitPosition[3], tCurEnemyPosition[1], tCurEnemyPosition[3])
-            if iCurDist < iClosestEnemyDist then
-                iClosestEnemyDist = iCurDist
-                oClosestEnemy = oEnemy
-            end
-        end
-    end
+    local oClosestEnemy = GetNearestEnemyUnitAndDistance(oUnit)
     if oClosestEnemy then
         IssueTrackedAttack(oUnit, oClosestEnemy, false)
     else
@@ -249,6 +284,53 @@ function RunToBase(oUnit)
     ForkThread(CheckWhenUnitHasReachedDestination, oUnit, 5)
 end
 
+--------------Supporting functions---------
+function GetNearestAvailableMexLocationAndDistance(oUnit)
+    local aiBrain = oUnit:GetAIBrain()
+    local sBlueprintToBuild = GetBlueprintThatCanBuildOfCategory(aiBrain, categories.STRUCTURE * categories.MASSEXTRACTION, oUnit)
+    if sBlueprintToBuild then
+        local iNearestMexDist = 10000
+        local tNearestMex, iCurDist
+        local iPlateauWanted = NavUtils.GetLabel('Hover', oUnit:GetPosition())
+        local tBasePosition = oUnit:GetPosition()
+
+        for iMex, tMex in M27Map.tMassPoints do
+            iCurDist = VDist2(tBasePosition[1], tBasePosition[3], tMex[1], tMex[3])
+            if iCurDist < iNearestMexDist then
+                if NavUtils.GetLabel('Hover', tMex) == iPlateauWanted then
+                    if aiBrain:CanBuildStructureAt(sBlueprintToBuild, tMex) then
+                        tNearestMex = {tMex[1], tMex[2], tMex[3]}
+                        iNearestMexDist = iCurDist
+                    end
+                end
+            end
+        end
+        return tNearestMex, iNearestMexDist
+    end
+end
+
+function GetNearestEnemyUnitAndDistance(oUnit)
+    local aiBrain = oUnit:GetAIBrain()
+    local tEnemyUnits = aiBrain:GetUnitsAroundPoint(categories.LAND + categories.STRUCTURE, oUnit:GetPosition(), 500, 'Enemy')
+    local oClosestEnemy
+    local iClosestEnemyDist = 10000
+    if tEnemyUnits[1] then
+        local tUnitPosition = oUnit:GetPosition()
+        local iPlateauWanted = NavUtils.GetLabel('Hover', tUnitPosition)
+        local iCurDist, tCurEnemyPosition
+        for iEnemy, oEnemy in tEnemyUnits do
+            tCurEnemyPosition = oEnemy:GetPosition()
+            iCurDist = VDist2(tUnitPosition[1], tUnitPosition[3], tCurEnemyPosition[1], tCurEnemyPosition[3])
+            if iCurDist < iClosestEnemyDist then
+                if iPlateauWanted == NavUtils.GetLabel('Hover', oEnemy:GetPosition()) then
+                    iClosestEnemyDist = iCurDist
+                    oClosestEnemy = oEnemy
+                end
+            end
+        end
+    end
+    return oClosestEnemy, iClosestEnemyDist
+end
 
 ------------Order commands and tracking--------------------
 function TrackOrder(oUnit, iType, tPosition, oTarget, sBlueprint)
