@@ -14,6 +14,7 @@ tHydroPoints = {}
 reftEnemyBase = 'Mini27EnBase' --{x,y,z} of the enemy base
 
 function SetupMap(aiBrain)
+--This makes sure the FAF navigational mesh is generated; the navigational mesh allows you to check if two locations can be pathed to each other (and generate a path to travel between them)
     if not(bMapSetupRun) then
         bMapSetupRun = true
         if not(NavUtils.IsGenerated()) then
@@ -46,6 +47,7 @@ end
 ----------General information and functions------
 
 function DetermineEnemyBase(aiBrain)
+    --Works out the closest enemy base to aiBrain based on a straight line distance
     local iNearestEnemyBaseDist = 10000
     local tNearestEnemyBase, iCurDist, iEnemyBaseX, iEnemyBaseZ
     local iOurBaseX, iOurBaseZ = aiBrain:GetArmyStartPos()

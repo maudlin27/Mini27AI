@@ -22,6 +22,13 @@ refiOrderIssueFactoryBuild = 14
 --Variables against a unit
 reftoAttackingUnits = 'M27AtckUnt' --table of units told to attack this unit
 
+---------------------OVERVIEW--------------
+--When events are generated, they trigger an assessment of what the unit in question should be doing, which is then processed
+--For example, when a unit is first built, it has logic assigned to it, which might be to attack an enemy unit
+--When a unit is killed, if it was being attacked (per the above) then units with that attack order should have their orders reassessed
+--Similalry, this reassessment can be triggered if an engineer finishes building a unit, or via special monitoring for move orders to check if the unit has got near the target location
+
+
 ---------------------EVENTS:----------------
 function OnCreate(oUnit)
       --LOG('OnCreate triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
@@ -71,9 +78,8 @@ end
 
 ---------Support functions----------------------
 function GetBlueprintThatCanBuildOfCategory(aiBrain, iCategoryCondition, oFactory)
-    --returns nil if cant find any blueprints that can build
-    --NOTE: Can use import("/lua/game.lua").IsRestricted(sBlueprint, iArmyIndex) to see if we are able to build a particular blueprint
-      --LOG('GetBlueprintThatCanBuildOfCategory triggered for oFactory='..oFactory.UnitId..', EntityID='..oFactory.EntityId)
+    --returns nil if cant find any blueprints that can build; will identify all blueprints meeting iCategoryCondition that oFactory can build, and then select a random one of these to build
+
     local tBlueprints = EntityCategoryGetUnitList(iCategoryCondition)
     local tValidBlueprints = {}
     local iValidBlueprints = 0
@@ -99,6 +105,8 @@ end
 ----------Deciding what orders to give to units-----------------
 
 function AssignLogicToUnit(oUnit, iOptionalDelayInSeconds)
+    --Main function for determining what order to give to oUnit
+
       --LOG('AssignLogicToUnit triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
     if iOptionalDelayInSeconds then
         WaitSeconds(iOptionalDelayInSeconds)
@@ -107,13 +115,16 @@ function AssignLogicToUnit(oUnit, iOptionalDelayInSeconds)
 
     local aiBrain = oUnit:GetAIBrain()
     if EntityCategoryContains(categories.COMMAND, oUnit.UnitId) then
-        --If we have only 1 factory then build, otherwise attack
+        --ACU logic - in reality you would probably want to move this to a different function to avoid the code getting too complicated, since the ACU is likely to have the most complex decision making (due to its dual role as an engineer and a combat unit, and the need to keep it safe)
+
+        --If we have only 1 factory then consider the initial build order
         if aiBrain:GetCurrentUnits(categories.FACTORY) < 2 then
             ProcessACUBuildOrder(oUnit)
+        --If are in danger of dying then retreat
         elseif oUnit:GetHealth() / oUnit:GetMaxHealth() < 0.7 then
             RunToBase(oUnit)
         else
-            --Build factory if high mass
+            --Build factory if high mass (and power if its needed to support the factory)
             local oNearestEnemy, iNearestEnemyDist = GetNearestEnemyUnitAndDistance(oUnit)
             if iNearestEnemyDist <= 35 then
                 IssueTrackedAttack(oUnit, oNearestEnemy, false)
@@ -126,6 +137,7 @@ function AssignLogicToUnit(oUnit, iOptionalDelayInSeconds)
                 end
                 BuildNormalBuilding(oUnit, sBlueprintToBuild, oUnit:GetPosition())
             else
+                --Either advance to the nearest mex and build on it, or attack the nearest enemy unit, depending on which one is closest
                 local tNearestMex, iNearestMexDist = GetNearestAvailableMexLocationAndDistance(oUnit)
                 local bBuildingMex = false
                 if iNearestMexDist < iNearestEnemyDist then
@@ -145,14 +157,17 @@ function AssignLogicToUnit(oUnit, iOptionalDelayInSeconds)
             end
         end
     elseif EntityCategoryContains(categories.LAND * categories.MOBILE * categories.DIRECTFIRE + categories.LAND * categories.MOBILE * categories.INDIRECTFIRE, oUnit.UnitId) then
+        --Normal tank logic - just attack the nearest enemy (or the enemy base if no visible enemies)
         AttackNearestVisibleEnemy(oUnit)
     elseif EntityCategoryContains(categories.FACTORY, oUnit.UnitId) then
+        --Call factory construction logic to decide what unit to build
         BuildFactoryUnit(oUnit)
     end
 end
 
 function CheckWhenUnitHasReachedDestination(oUnit, iDistanceWanted)
     --Assigns logic to unit once it has reached the destination
+
       --LOG('CheckWhenUnitHasReachedDestination triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
     if oUnit[subreftOrderPosition] then
         WaitSeconds(1)
@@ -170,6 +185,7 @@ function CheckWhenUnitHasReachedDestination(oUnit, iDistanceWanted)
 end
 
 function ProcessACUBuildOrder(oUnit)
+    --Considers the initial build order for the ACU - will just alternate for 1 pgen - 1 mex and get 2 land factories
     local aiBrain = oUnit:GetAIBrain()
     local iCurPGens = aiBrain:GetCurrentUnits(categories.STRUCTURE * categories.ENERGYPRODUCTION)
     local iCurFactories = aiBrain:GetCurrentUnits(categories.FACTORY)
@@ -196,10 +212,12 @@ function ProcessACUBuildOrder(oUnit)
 end
 
 function GetBuildLocation(aiBrain, sBlueprintToBuild, tSearchLocation)
+    --Searches for somewhere that sBlueprintToBuild can be built around tSearchLocation; doesnt search every possible location but instead searches 170 different locations in ever increasing distances
+
     --LOG('GetBuildLocation triggered for sBlueprintToBuild='..sBlueprintToBuild..'; tSearchLocation='..repru(tSearchLocation))
     if aiBrain:CanBuildStructureAt(sBlueprintToBuild, tSearchLocation) then return tSearchLocation
     else
-        for iAdjust = 4, 50, 4 do
+        for iAdjust = 4, 52, 4 do
             for iX = -iAdjust, iAdjust, iAdjust do
                 for iZ = -iAdjust, iAdjust, iAdjust do
                     if not(iX == 0 and iZ == 0) then
@@ -219,6 +237,7 @@ function GetBuildLocation(aiBrain, sBlueprintToBuild, tSearchLocation)
 end
 
 function BuildNormalBuilding(oUnit, sBlueprintToBuild, tSearchLocation)
+    --Tries to build sBLueprintToBuild near tSearchLocation (or sends the unit for logic assignment if it cant find anywhere to build)
     local aiBrain = oUnit:GetAIBrain()
     local tBuildLocation = GetBuildLocation(aiBrain, sBlueprintToBuild, tSearchLocation)
     if tBuildLocation then
@@ -230,6 +249,7 @@ function BuildNormalBuilding(oUnit, sBlueprintToBuild, tSearchLocation)
 end
 
 function BuildNearestAvailableMex(oUnit)
+    --Searches for the nearest available mex that oUnit can path to, and builds a mex there
     local aiBrain = oUnit:GetAIBrain()
     local sBlueprintToBuild = GetBlueprintThatCanBuildOfCategory(aiBrain, categories.STRUCTURE * categories.MASSEXTRACTION, oUnit)
     if sBlueprintToBuild then
@@ -241,6 +261,8 @@ function BuildNearestAvailableMex(oUnit)
 end
 
 function BuildFactoryUnit(oFactory)
+    --Decides what unit the factory should build (currently it just builds tanks and LABs)
+
       --LOG('BuildFactoryUnit triggered for oFactory='..oFactory.UnitId..', EntityID='..oFactory.EntityId)
     local aiBrain = oFactory:GetAIBrain()
     local sBlueprintToBuild = GetBlueprintThatCanBuildOfCategory(aiBrain, categories.DIRECTFIRE * categories.MOBILE, oFactory)
@@ -265,7 +287,7 @@ function AttackNearestVisibleEnemy(oUnit)
 end
 
 function AttackEnemyBase(oUnit)
-    --Determine primary enemy base if havent already
+    --Determine primary enemy base if havent already, and attack-move towards it
       --LOG('AttackEnemyBase triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
 
     local aiBrain = oUnit:GetAIBrain()
@@ -277,6 +299,7 @@ function AttackEnemyBase(oUnit)
 end
 
 function RunToBase(oUnit)
+    --Move back to our base (i.e. start position)
       --LOG('RunToBase triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
     local aiBrain = oUnit:GetAIBrain()
     local iOurBaseX, iOurBaseZ =  aiBrain:GetArmyStartPos()
@@ -286,6 +309,8 @@ end
 
 --------------Supporting functions---------
 function GetNearestAvailableMexLocationAndDistance(oUnit)
+    --Searches every mex and finds the one nearest to oUnit that oUnit can path to (assuming oUnit is a hover unit)
+
     local aiBrain = oUnit:GetAIBrain()
     local sBlueprintToBuild = GetBlueprintThatCanBuildOfCategory(aiBrain, categories.STRUCTURE * categories.MASSEXTRACTION, oUnit)
     if sBlueprintToBuild then
@@ -310,6 +335,8 @@ function GetNearestAvailableMexLocationAndDistance(oUnit)
 end
 
 function GetNearestEnemyUnitAndDistance(oUnit)
+    --Searches for the nearest enemy unit that we have current intel of to oUnit that is on the same plateau
+
     local aiBrain = oUnit:GetAIBrain()
     local tEnemyUnits = aiBrain:GetUnitsAroundPoint(categories.LAND + categories.STRUCTURE, oUnit:GetPosition(), 500, 'Enemy')
     local oClosestEnemy
@@ -334,17 +361,20 @@ end
 
 ------------Order commands and tracking--------------------
 function TrackOrder(oUnit, iType, tPosition, oTarget, sBlueprint)
+    --Updates tracking of what the unit's current order is
     oUnit[subrefiOrderType] = iType
     oUnit[subreftOrderPosition] = tPosition
     oUnit[subrefoOrderUnitTarget] = oTarget
     oUnit[subrefsOrderBlueprint] = sBlueprint
 end
 function IssueTrackedClearCommands(oUnit)
+    --Clears unit's current orders
     IssueClearCommands({oUnit})
     TrackOrder(oUnit, nil, nil, nil, nil)
 end
 
 function IssueTrackedAttack(oUnit, oOrderTarget, bAddToExistingQueue)
+    --Attack oOrderTarget
     if not(bAddToExistingQueue) then IssueTrackedClearCommands(oUnit) end
     IssueAttack({oUnit}, oOrderTarget)
     TrackOrder(oUnit, refiOrderIssueAttack, nil, oOrderTarget, nil)
@@ -354,6 +384,7 @@ function IssueTrackedAttack(oUnit, oOrderTarget, bAddToExistingQueue)
 end
 
 function IssueTrackedAggressiveMove(oUnit, tOrderPosition, bAddToExistingQueue)
+    --Attack-move to tOrderPosition
     if not(bAddToExistingQueue) then IssueTrackedClearCommands(oUnit) end
     IssueAggressiveMove({oUnit}, tOrderPosition)
     oUnit[subreftOrderPosition] = {tOrderPosition[1], tOrderPosition[2], tOrderPosition[3]}
@@ -362,17 +393,20 @@ function IssueTrackedAggressiveMove(oUnit, tOrderPosition, bAddToExistingQueue)
 end
 
 function IssueTrackedMove(oUnit, tOrderPosition, bAddToExistingQueue)
+    --Move to tOrderPosition
     if not(bAddToExistingQueue) then IssueTrackedClearCommands(oUnit) end
     IssueMove({oUnit}, tOrderPosition)
     TrackOrder(oUnit, refiOrderIssueMove, {tOrderPosition[1], tOrderPosition[2], tOrderPosition[3]}, nil, nil)
 end
 
 function IssueTrackedFactoryBuild(oUnit, sBPToBuild)
+    --Have a factory build sBPToBuild
     IssueBuildFactory({ oUnit }, sBPToBuild, 1)
     TrackOrder(oUnit, refiOrderIssueFactoryBuild, nil, nil, sBPToBuild)
 end
 
 function IssueTrackedBuild(oUnit, tOrderPosition, sOrderBlueprint, bAddToExistingQueue)
+    --Have an engineer/ACU build sOrderBlueprint at tOrderPosition
     if not(bAddToExistingQueue) then IssueTrackedClearCommands(oUnit) end
     IssueBuildMobile({ oUnit }, tOrderPosition, sOrderBlueprint, {})
     TrackOrder(oUnit, refiOrderIssueBuild, nil, nil, sOrderBlueprint)

@@ -7,7 +7,7 @@ local StandardBrain = import("/lua/aibrain.lua").AIBrain
 local M27Map = import('/mods/Mini27AI/lua/AI/M27Map.lua')
 
 NewAIBrain = Class(StandardBrain) {
-
+    --Currently this is only used to flag that the aiBrain uses this logic, and to make sure the navigational mesh gets generated; OnBeginSession and OnDefeat left in for reference in case they are wanted in the future to also run this AI's custom code
     OnBeginSession = function(self)
         StandardBrain.OnBeginSession(self)
     end,

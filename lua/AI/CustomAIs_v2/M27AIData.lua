@@ -10,11 +10,11 @@ AI = {
         {
             key = 'mini27ai',
             name = '<LOC M28_0001>AI: Mini27',
-            rating = 100,
-            ratingCheatMultiplier = 0.0,
+            rating = 100, --base rating for the AI
+            ratingCheatMultiplier = 0.0, --Amount to increase the base rating by for the AiX resource modifier in game settings (should be set to 0 for a non-cheating AI)
             ratingBuildMultiplier = 0.0,
             ratingOmniBonus = 0,
-            ratingMapMultiplier = {
+            ratingMapMultiplier = { --this affects the displayed rating for the AI, e.g. 1 means 100% of the rating determined above is used for a particular map size
                 [256] = 1,   -- 5x5
                 [512] = 0.9,   -- 10x10
                 [1024] = 0.7,  -- 20x20
