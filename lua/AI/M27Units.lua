@@ -18,16 +18,19 @@ refiOrderIssueBuild = 9
 refiOrderIssueFactoryBuild = 14
 
 
+--Variables against a unit
+reftoAttackingUnits = 'M27AtckUnt' --table of units told to attack this unit
+
 ---------------------EVENTS:----------------
 function OnCreate(oUnit)
-    LOG('OnCreate triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
+      --LOG('OnCreate triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
     if oUnit:GetFractionComplete() == 1 and oUnit:GetAIBrain().Mini27AI then
         AssignLogicToUnit(oUnit)
     end
 end
 
 function OnConstructed(oEngineer, oUnit)
-    LOG('OnConstructed triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
+      --LOG('OnConstructed triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
     if oEngineer:GetAIBrain().Mini27AI then
         AssignLogicToUnit(oEngineer)
     end
@@ -36,11 +39,39 @@ function OnConstructed(oEngineer, oUnit)
     end
 end
 
+function OnDamaged(oUnit, instigator)
+    if not(oUnit.Dead) and oUnit:GetAIBrain().Mini27AI then
+        if EntityCategoryContains(categories.COMMAND, oUnit.UnitId) then
+            if oUnit:GetHealth() / oUnit:GetMaxHealth() < 0.7 then
+                --If ACU isnt already running to base then run to base
+                local aiBrain = oUnit:GetAIBrain()
+                local iOurBaseX, iOurBaseZ =  aiBrain:GetArmyStartPos()
+                if not(oUnit[subreftOrderPosition][1] == iOurBaseX) or not(oUnit[subreftOrderPosition][3] == iOurBaseZ) then
+                    AssignLogicToUnit(oUnit)
+                end
+            end
+        end
+    end
+end
+
+function OnUnitDeath(oUnit)
+    --LOG('OnUnitDeath triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
+    if oUnit[reftoAttackingUnits][1] then
+        for iAttacker, oAttacker in oUnit[reftoAttackingUnits] do
+            if oAttacker == oUnit then
+                ForkThread(AssignLogicToUnit, oAttacker)
+                table.remove(oUnit[reftoAttackingUnits], iAttacker)                
+                break
+            end
+        end
+    end
+end
+
 ---------Support functions----------------------
 function GetBlueprintThatCanBuildOfCategory(aiBrain, iCategoryCondition, oFactory)
     --returns nil if cant find any blueprints that can build
     --NOTE: Can use import("/lua/game.lua").IsRestricted(sBlueprint, iArmyIndex) to see if we are able to build a particular blueprint
-    LOG('GetBlueprintThatCanBuildOfCategory triggered for oFactory='..oFactory.UnitId..', EntityID='..oFactory.EntityId)
+      --LOG('GetBlueprintThatCanBuildOfCategory triggered for oFactory='..oFactory.UnitId..', EntityID='..oFactory.EntityId)
     local tBlueprints = EntityCategoryGetUnitList(iCategoryCondition)
     local tValidBlueprints = {}
     local iValidBlueprints = 0
@@ -66,7 +97,7 @@ end
 ----------Deciding what orders to give to units-----------------
 
 function AssignLogicToUnit(oUnit, iOptionalDelayInSeconds)
-    LOG('AssignLogicToUnit triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
+      --LOG('AssignLogicToUnit triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
     if iOptionalDelayInSeconds then
         WaitSeconds(iOptionalDelayInSeconds)
         if oUnit.Dead then return nil end
@@ -91,7 +122,7 @@ end
 
 function CheckWhenUnitHasReachedDestination(oUnit, iDistanceWanted)
     --Assigns logic to unit once it has reached the destination
-    LOG('CheckWhenUnitHasReachedDestination triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
+      --LOG('CheckWhenUnitHasReachedDestination triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
     if oUnit[subreftOrderPosition] then
         WaitSeconds(1)
         local iDistToLocation = 10000
@@ -127,19 +158,26 @@ function ProcessACUBuildOrder(oUnit)
 end
 
 function GetBuildLocation(aiBrain, sBlueprintToBuild, tSearchLocation)
-    for iAdjust = 0, 100, 4 do
-        for iX = -iAdjust, iAdjust, iAdjust do
-            for iZ = -iAdjust, iAdjust, iAdjust do
-                if iAdjust == 0 or not(iX == 0 and iZ == 0) then
-                    local tPotentialBuildLocation = {tSearchLocation[1] + iX, 0, tSearchLocation[3] + iZ}
-                    tPotentialBuildLocation[2] = GetSurfaceHeight(tPotentialBuildLocation[1], tPotentialBuildLocation[3])
-                    if aiBrain:CanBuildStructureAt(sBlueprintToBuild, tPotentialBuildLocation) then
-                        return tPotentialBuildLocation
+    --LOG('GetBuildLocation triggered for sBlueprintToBuild='..sBlueprintToBuild..'; tSearchLocation='..repru(tSearchLocation))
+    if aiBrain:CanBuildStructureAt(sBlueprintToBuild, tSearchLocation) then return tSearchLocation
+    else
+        for iAdjust = 4, 50, 4 do
+            for iX = -iAdjust, iAdjust, iAdjust do
+                for iZ = -iAdjust, iAdjust, iAdjust do
+                    if not(iX == 0 and iZ == 0) then
+                        local tPotentialBuildLocation = {tSearchLocation[1] + iX, 0, tSearchLocation[3] + iZ}
+                        tPotentialBuildLocation[2] = GetSurfaceHeight(tPotentialBuildLocation[1], tPotentialBuildLocation[3])
+                        --LOG('Considering tPotentialBuildLocation='..repru(tPotentialBuildLocation)..'; Can build structure here='..tostring(aiBrain:CanBuildStructureAt(sBlueprintToBuild, tPotentialBuildLocation))..'; iX='..iX..'; iZ='..iZ..'; iAdjust='..iAdjust)
+                        if aiBrain:CanBuildStructureAt(sBlueprintToBuild, tPotentialBuildLocation) then
+                            --LOG('GetBuildLocation found tPotentialBuildLocation='..repru(tPotentialBuildLocation))
+                            return tPotentialBuildLocation
+                        end
                     end
                 end
             end
         end
     end
+    --LOG('GetBuildLocation end of code')
 end
 
 function BuildNormalBuilding(oUnit, sBlueprintToBuild, tSearchLocation)
@@ -154,7 +192,7 @@ function BuildNormalBuilding(oUnit, sBlueprintToBuild, tSearchLocation)
 end
 
 function BuildFactoryUnit(oFactory)
-    LOG('BuildFactoryUnit triggered for oFactory='..oFactory.UnitId..', EntityID='..oFactory.EntityId)
+      --LOG('BuildFactoryUnit triggered for oFactory='..oFactory.UnitId..', EntityID='..oFactory.EntityId)
     local aiBrain = oFactory:GetAIBrain()
     local sBlueprintToBuild = GetBlueprintThatCanBuildOfCategory(aiBrain, categories.DIRECTFIRE * categories.MOBILE, oFactory)
     if sBlueprintToBuild then
@@ -167,7 +205,7 @@ end
 -----------Executing unit orders----------------------
 function AttackNearestVisibleEnemy(oUnit)
     --Locates the nearest enemy to oUnit and does an attack move towards it
-    LOG('AttackNearestVisibleEnemy triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
+      --LOG('AttackNearestVisibleEnemy triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
     local aiBrain = oUnit:GetAIBrain()
     local tEnemyUnits = aiBrain:GetUnitsAroundPoint(categories.LAND + categories.STRUCTURE, oUnit:GetPosition(), 500, 'Enemy')
     local oClosestEnemy
@@ -193,7 +231,7 @@ end
 
 function AttackEnemyBase(oUnit)
     --Determine primary enemy base if havent already
-    LOG('AttackEnemyBase triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
+      --LOG('AttackEnemyBase triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
 
     local aiBrain = oUnit:GetAIBrain()
     if not(aiBrain[M27Map.reftEnemyBase]) then
@@ -204,7 +242,7 @@ function AttackEnemyBase(oUnit)
 end
 
 function RunToBase(oUnit)
-    LOG('RunToBase triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
+      --LOG('RunToBase triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
     local aiBrain = oUnit:GetAIBrain()
     local iOurBaseX, iOurBaseZ =  aiBrain:GetArmyStartPos()
     IssueTrackedMove(oUnit, {iOurBaseX, GetSurfaceHeight(iOurBaseX, iOurBaseZ), iOurBaseZ}, false)
@@ -228,6 +266,9 @@ function IssueTrackedAttack(oUnit, oOrderTarget, bAddToExistingQueue)
     if not(bAddToExistingQueue) then IssueTrackedClearCommands(oUnit) end
     IssueAttack({oUnit}, oOrderTarget)
     TrackOrder(oUnit, refiOrderIssueAttack, nil, oOrderTarget, nil)
+    --Track the unit being attacked
+    if not(oOrderTarget[reftoAttackingUnits]) then oOrderTarget[reftoAttackingUnits] = {} end
+    table.insert(oOrderTarget[reftoAttackingUnits], oUnit)
 end
 
 function IssueTrackedAggressiveMove(oUnit, tOrderPosition, bAddToExistingQueue)

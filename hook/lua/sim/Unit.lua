@@ -18,5 +18,31 @@ do --Per Balthazaar - encasing the code in do .... end means that you dont have 
             end
             return M27OldUnit.OnStopBuild(self, unit)
         end,
+        OnDamage = function(self, instigator, amount, vector, damageType)
+            M27OldUnit.OnDamage(self, instigator, amount, vector, damageType)
+            M27Units.OnDamaged(self, instigator) --Want this after just incase our code messes things up
+        end,
+        OnKilled = function(self, instigator, type, overkillRatio) --NOTE: For some reason this doesnt run a lot of the time; onkilledunit is more reliable
+            M27Units.OnUnitDeath(self)
+            M27OldUnit.OnKilled(self, instigator, type, overkillRatio)
+        end,
+        OnReclaimed = function(self, reclaimer)
+            M27Units.OnUnitDeath(self)
+            M27OldUnit.OnReclaimed(self, reclaimer)
+        end,
+        OnDecayed = function(self)
+            --LOG('OnDecayed: Time='..GetGameTimeSeconds()..'; self.UnitId='..(self.UnitId or 'nil'))
+            M27Units.OnUnitDeath(self)
+            M27OldUnit.OnDecayed(self)
+        end,
+        OnKilledUnit = function(self, unitKilled, massKilled)
+            M27Units.OnUnitDeath(unitKilled)
+            M27OldUnit.OnKilledUnit(self, unitKilled, massKilled)
+        end,
+        OnDestroy = function(self)
+            --LOG('OnDestroy: Time='..GetGameTimeSeconds()..'; self.UnitId='..(self.UnitId or 'nil'))
+            M27Units.OnUnitDeath(self)
+            M27OldUnit.OnDestroy(self)
+        end,
     }
 end

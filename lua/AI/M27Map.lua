@@ -33,7 +33,7 @@ function DetermineEnemyBase(aiBrain)
             if not(ArmyIsCivilian(oBrain:GetArmyIndex())) then
                 iEnemyBaseX, iEnemyBaseZ = oBrain:GetArmyStartPos()
                 iCurDist = VDist2(iOurBaseX, iOurBaseZ, iEnemyBaseX, iEnemyBaseZ)
-                LOG('Considering enemy brain '..aiBrain.Nickname..'; start positionX='..iEnemyBaseX..';Z='..iEnemyBaseZ..'; iCurDist='..iCurDist..'; Personality='..(ScenarioInfo.ArmySetup[aiBrain.Name].AIPersonality or 'nil'))
+                --LOG('Considering enemy brain '..aiBrain.Nickname..'; start positionX='..iEnemyBaseX..';Z='..iEnemyBaseZ..'; iCurDist='..iCurDist..'; Personality='..(ScenarioInfo.ArmySetup[aiBrain.Name].AIPersonality or 'nil'))
                 if iCurDist < iNearestEnemyBaseDist then
                     iNearestEnemyBaseDist = iCurDist
                     tNearestEnemyBase = {iEnemyBaseX, GetSurfaceHeight(iEnemyBaseX, iEnemyBaseZ), iEnemyBaseZ}
