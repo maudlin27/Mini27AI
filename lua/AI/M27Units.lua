@@ -4,7 +4,7 @@
 --- DateTime: 08/05/2024 22:56
 ---
 local M27Map = import('/mods/Mini27AI/lua/AI/M27Map.lua')
-local NavUtils = import("/lua/sim/navutils.lua")
+local NavUtils = import('/mods/Mini27AI/lua/AI/M27NavUtils.lua') --import("/lua/sim/navutils.lua")
 
 --Global variables: Order references
 subrefiOrderType = 1
