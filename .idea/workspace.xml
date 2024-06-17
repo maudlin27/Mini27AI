@@ -5,12 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="70c3ee33-34b4-4902-839f-bd1f2bd0caf3" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/lua/AI/M27UnitInfo.lua" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/hook/lua/sim/ScenarioUtilities.lua" beforeDir="false" afterPath="$PROJECT_DIR$/hook/lua/sim/ScenarioUtilities.lua" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hook/lua/sim/Unit.lua" beforeDir="false" afterPath="$PROJECT_DIR$/hook/lua/sim/Unit.lua" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lua/AI/M27NavGenerator.lua" beforeDir="false" afterPath="$PROJECT_DIR$/lua/AI/M27NavGenerator.lua" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lua/AI/M27Units.lua" beforeDir="false" afterPath="$PROJECT_DIR$/lua/AI/M27Units.lua" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -44,6 +40,12 @@
     &quot;kotlin-language-version-configured&quot;: &quot;true&quot;
   }
 }</component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Program Files (x86)\Steam\steamapps\common\Supreme Commander Forged Alliance\LOUD\usermods\Mini27AI\lua\CustomOptions" />
+      <recent name="C:\Program Files (x86)\Steam\steamapps\common\Supreme Commander Forged Alliance\LOUD\usermods\Mini27AI\lua\AI\LobbyOptions" />
+    </key>
+  </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">

@@ -18,7 +18,8 @@ InitializeArmies = function()
                     --If we have no team, or our team is an odd number, then use M27
                     local iTeam = oBrain.Team or ScenarioInfo.ArmySetup[oBrain.Name].Team or -1
                     LOG('WIll consider applying M27 logic if are an odd team or not specified, iTeam='..iTeam)
-                    if iTeam < 0 or iTeam == 1 or iTeam == 3 or iTeam == 5 or iTeam == 7 then
+                    --For some reason the .Team odd and even values are switched from what is shown in the lobby
+                    if tonumber(ScenarioInfo.Options.M27Teams) == 2 or iTeam <= 0 or iTeam == 2 or iTeam == 4 or iTeam == 6 or iTeam == 8 then
                         LOG('Will apply M27 logic to the AI')
                         oBrain.Mini27AI = true
                         ForkThread(M27Map.SetupMap, oBrain)
