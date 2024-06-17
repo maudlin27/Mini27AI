@@ -546,7 +546,7 @@ CompressedLabelTree = ClassCompressedLabelTree {
                 ---------------------------------------------------------------
                 -- case 1: we're completely uniform with the same label
 
-                LOG("Heh!")
+                --LOG("Heh!")
 
                 self[ci] = CreateLeaf(self, bx, bz, lx, lz, ls, labelTopLeft, statistics)
             else

@@ -5,6 +5,8 @@
 ---
 local M27Map = import('/mods/Mini27AI/lua/AI/M27Map.lua')
 local NavUtils = import('/mods/Mini27AI/lua/AI/M27NavUtils.lua') --import("/lua/sim/navutils.lua")
+local M27ParentDetails = import('/mods/Mini27AI/lua/AI/M27ParentDetails.lua')
+local M27UnitInfo = import('/mods/Mini27AI/lua/AI/M27UnitInfo.lua')
 
 --Global variables: Order references
 subrefiOrderType = 1
@@ -31,7 +33,7 @@ reftoAttackingUnits = 'M27AtckUnt' --table of units told to attack this unit
 
 ---------------------EVENTS:----------------
 function OnCreate(oUnit)
-      LOG('OnCreate triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
+    --LOG('OnCreate triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
     if oUnit:GetFractionComplete() == 1 and oUnit:GetAIBrain().Mini27AI then
         AssignLogicToUnit(oUnit)
     end
@@ -85,10 +87,10 @@ function GetBlueprintThatCanBuildOfCategory(aiBrain, iCategoryCondition, oFactor
     local iValidBlueprints = 0
 
     if oFactory.CanBuild then
-        local Game = import("/lua/game.lua")
+
         local iArmyIndex = aiBrain:GetArmyIndex()
         for _, sBlueprint in tBlueprints do
-            if oFactory:CanBuild(sBlueprint) == true and not(Game.IsRestricted(sBlueprint, iArmyIndex)) then
+            if oFactory:CanBuild(sBlueprint) == true and not(M27UnitInfo.IsUnitRestricted(sBlueprint, iArmyIndex)) then
                 iValidBlueprints = iValidBlueprints + 1
                 tValidBlueprints[iValidBlueprints] = sBlueprint
             end
@@ -107,7 +109,7 @@ end
 function AssignLogicToUnit(oUnit, iOptionalDelayInSeconds)
     --Main function for determining what order to give to oUnit
 
-    LOG('AssignLogicToUnit triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
+    --LOG('AssignLogicToUnit triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
     if iOptionalDelayInSeconds then
         WaitSeconds(iOptionalDelayInSeconds)
         if oUnit.Dead then return nil end

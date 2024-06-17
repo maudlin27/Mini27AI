@@ -8,18 +8,21 @@ local M27Map = import('/mods/Mini27AI/lua/AI/M27Map.lua')
 
 local M27InitializeArmies = InitializeArmies
 InitializeArmies = function()
-    LOG('M27 InitializeArmies start, Is ArmyBrains nil='..tostring(ArmyBrains == nil))
     M27ParentDetails.ConsiderIfLoudActive()
+    LOG('M27 InitializeArmies start, M27ParentDetails.bLoudModActive='..tostring(M27ParentDetails.bLoudModActive or false))
     if M27ParentDetails.bLoudModActive then
         if ArmyBrains then
             for iBrain, oBrain in ArmyBrains do
-                LOG('oBrain='..(oBrain.Nickname or 'nil')..'; repr='..repr(oBrain))
-                LOG(' ArmyIsCivilian(oBrain)='..tostring(ArmyIsCivilian(oBrain:GetArmyIndex())))
-                LOG('Brain type is AI='..tostring( oBrain.BrainType == 'AI'))
+                LOG('oBrain='..(oBrain.Nickname or 'nil')..'; ArmyIsCivilian(oBrain)='..tostring(ArmyIsCivilian(oBrain:GetArmyIndex()))..'; Brain type is AI='..tostring( oBrain.BrainType == 'AI'))
                 if oBrain.BrainType == 'AI' and not(ArmyIsCivilian(oBrain:GetArmyIndex())) then
-                    LOG('Will apply M27 logic to the AI')
-                    oBrain.Mini27AI = true
-                    ForkThread(M27Map.SetupMap, oBrain)
+                    --If we have no team, or our team is an odd number, then use M27
+                    local iTeam = oBrain.Team or ScenarioInfo.ArmySetup[oBrain.Name].Team or -1
+                    LOG('WIll consider applying M27 logic if are an odd team or not specified, iTeam='..iTeam)
+                    if iTeam < 0 or iTeam == 1 or iTeam == 3 or iTeam == 5 or iTeam == 7 then
+                        LOG('Will apply M27 logic to the AI')
+                        oBrain.Mini27AI = true
+                        ForkThread(M27Map.SetupMap, oBrain)
+                    end
                 end
             end
         end
@@ -50,7 +53,9 @@ InitializeArmies = function()
         ScenarioInfo.biggestTeamSize = 0
 
         local function InitializeSkirmishSystems(self)
-
+            if self.MiniM27AI then
+                self.CheatingAI = false
+            end
             -- store which team we're on
             if ScenarioInfo.ArmySetup[self.Name].Team == 1 then
                 self.Team = -1 * self.ArmyIndex  -- no team specified
@@ -110,7 +115,7 @@ InitializeArmies = function()
             if self.TeamSize > ScenarioInfo.biggestTeamSize then
                 ScenarioInfo.biggestTeamSize = TeamSize
             end
-            if true then return end --ADDED TO SEE IF MEANS WE TAKE OVER
+            if self.Mini27AI then return end --ADDED TO SEE IF MEANS WE TAKE OVER
             -- don't do anything else for a human player
             if self.BrainType == 'Human' then
                 return
