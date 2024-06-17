@@ -31,7 +31,7 @@ reftoAttackingUnits = 'M27AtckUnt' --table of units told to attack this unit
 
 ---------------------EVENTS:----------------
 function OnCreate(oUnit)
-      --LOG('OnCreate triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
+      LOG('OnCreate triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
     if oUnit:GetFractionComplete() == 1 and oUnit:GetAIBrain().Mini27AI then
         AssignLogicToUnit(oUnit)
     end
@@ -107,7 +107,7 @@ end
 function AssignLogicToUnit(oUnit, iOptionalDelayInSeconds)
     --Main function for determining what order to give to oUnit
 
-      --LOG('AssignLogicToUnit triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
+    LOG('AssignLogicToUnit triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
     if iOptionalDelayInSeconds then
         WaitSeconds(iOptionalDelayInSeconds)
         if oUnit.Dead then return nil end

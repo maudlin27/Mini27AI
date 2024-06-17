@@ -21,6 +21,8 @@
 --******************************************************************************************************
 
 local Shared = import('/mods/Mini27AI/lua/AI/M27SharedNavGenerator.lua')
+--SEE BELOW FOR import('/mods/Mini27AI/lua/AI/M27NavGenerator.lua')
+
 
 ---@alias NavTerrainCache number[][]
 ---@alias NavDepthCache number[][]
@@ -1891,11 +1893,11 @@ function Generate()
     SPEW(string.format("Allocated megabytes for labels: %f", allocatedSizeLabels))
     SPEW(string.format("Number of labels: %f", LabelIdentifier))
     SPEW(string.format("Number of cells: %f", CellIdentifier))
-    SPEW(reprs(NavLayerData))
+    --SPEW(reprs(NavLayerData))
 
     Sync.NavLayerData = NavLayerData
     Generated = true
 
     -- allows debugging tools to function
-    import("/lua/sim/navdebug.lua")
+    import('/mods/Mini27AI/lua/AI/M27NavGenerator.lua')
 end
