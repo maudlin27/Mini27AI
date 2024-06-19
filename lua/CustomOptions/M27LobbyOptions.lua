@@ -9,8 +9,8 @@ LobbyGlobalOptions = {
         label = "M27 Teams",
         help = "Which teams should M27 apply to?",
         key = "M27Teams",
-        pref = 'lob_teams_combo',
-        type = 'index', --'edit',
+        --pref = 'lob_teams_combo',
+        --type = 'index', --'edit',
         --valid = '^%d+$',
         values = {
             {
