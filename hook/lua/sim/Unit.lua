@@ -10,15 +10,14 @@ do --Per Balthazaar - encasing the code in do .... end means that you dont have 
     local M27OldUnit = Unit
     Unit = Class(M27OldUnit) {
         OnCreate = function(self)
+            --LOG('OnCreate about to be run for unit ID='..(self.UnitId or 'nil')..'; repr of blueprint='..repr(self:GetBlueprint())..'; M27ParentDetails.bLoudModActive='..tostring(M27ParentDetails.bLoudModActive)..'; EntityID='..(self.EntityId or 'nil')..'; self:GetEntityId()='..(self:GetEntityId() or 'nil'))
+            M27OldUnit.OnCreate(self)
             if not(self.UnitId) then
                 if M27ParentDetails.bLoudModActive then
                     if not(self.EntityId) then self.EntityId = self:GetEntityId() end
                     self.UnitId = self:GetBlueprint().BlueprintId
                 end
             end
-            --LOG('OnCreate about to be run for unit ID='..(self.UnitId or 'nil')..'; repr of blueprint='..repr(self:GetBlueprint())..'; M27ParentDetails.bLoudModActive='..tostring(M27ParentDetails.bLoudModActive)..'; EntityID='..(self.EntityId or 'nil')..'; self:GetEntityId()='..(self:GetEntityId() or 'nil'))
-            M27OldUnit.OnCreate(self)
-            if not(self.UnitId) and M27ParentDetails.bLoudModActive then self.UnitId = self:GetBlueprint().BlueprintId end
             ForkThread(M27Units.OnCreate, self)
         end,
         OnStopBuild = function(self, unit)
