@@ -1,6 +1,6 @@
 name = "Mini27AI"
-uid = "fmini027-v001-55b4-92b6-64398e7ge43f"
-version = 1
+uid = "fmini027-v002-55b4-92b6-64398e7ge43f"
+version = 2
 copyright = "MIT License"
 description = "Simplistic AI to provide a starting point for AI developers"
 author = "maudlin27"
