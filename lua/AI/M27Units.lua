@@ -63,16 +63,16 @@ function OnDamaged(oUnit, instigator)
 end
 
 function OnUnitDeath(oUnit)
-    --LOG('OnUnitDeath triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId)
+    --LOG('OnUnitDeath triggered for oUnit='..oUnit.UnitId..', EntityID='..oUnit.EntityId..'; oUnit[reftoAttackingUnits][1]='..(oUnit[reftoAttackingUnits][1].UnitId or 'nil'))
     if oUnit[reftoAttackingUnits][1] then
         for iAttacker, oAttacker in oUnit[reftoAttackingUnits] do
-            if oAttacker == oUnit then
-                --LOG('OnUnitDeath: Will assign logic to the attacker who was trying to attack this unit')
+            --LOG('Considering oAttacker='..oAttacker.UnitId..'; EntityId='..oAttacker.EntityId..'; OrderUnitTarget='..(oAttacker[subrefoOrderUnitTarget].UnitId or 'nil')..' with EntityId='..(oAttacker[subrefoOrderUnitTarget].EntityId or 'nil')..'; Is attacker dead='..tostring(oAttacker.Dead or false))
+            if oAttacker[subrefoOrderUnitTarget] == oUnit and not(oAttacker.Dead) then
+                --LOG('OnUnitDeath: Will reassign logic to the attacker who was trying to attack this unit')
                 ForkThread(AssignLogicToUnit, oAttacker)
-                table.remove(oUnit[reftoAttackingUnits], iAttacker)                
-                break
             end
         end
+        oUnit[reftoAttackingUnits] = nil
     end
 end
 
@@ -381,6 +381,7 @@ function IssueTrackedAttack(oUnit, oOrderTarget, bAddToExistingQueue)
     --Track the unit being attacked
     if not(oOrderTarget[reftoAttackingUnits]) then oOrderTarget[reftoAttackingUnits] = {} end
     table.insert(oOrderTarget[reftoAttackingUnits], oUnit)
+    --LOG('Telling unit '..oUnit.UnitId..' to attack oOrderTarget '..(oOrderTarget.UnitId)..'; EntityId='..oOrderTarget.EntityId..'; size of reftoAttackingUnits='..table.getn(oOrderTarget[reftoAttackingUnits]))
 end
 
 function IssueTrackedAggressiveMove(oUnit, tOrderPosition, bAddToExistingQueue)
